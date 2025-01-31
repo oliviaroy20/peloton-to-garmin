@@ -65,7 +65,7 @@ namespace Conversion
 			var title = WorkoutHelper.GetTitle(workout, settings.Format);
 			var sport = GetGarminSport(workout);
 			var subSport = GetGarminSubSport(workout);
-			var deviceInfo = await GetDeviceInfoAsync(workout.Fitness_Discipline, settings);
+			var deviceInfo = await GetDeviceInfoAsync(workout);
 
 			if (sport == Sport.Invalid)
 			{
@@ -129,7 +129,7 @@ namespace Conversion
 			AddMetrics(messages, workoutSamples, sport, startTime);
 
 			var workoutMesg = new WorkoutMesg();
-			workoutMesg.SetWktName(title.Replace(WorkoutHelper.SpaceSeparator, ' '));
+			workoutMesg.SetWktName(title.Replace(WorkoutHelper.SpaceSeparator, WorkoutHelper.Space));
 			workoutMesg.SetCapabilities(32);
 			workoutMesg.SetSport(sport);
 			workoutMesg.SetSubSport(subSport);
@@ -374,6 +374,18 @@ namespace Conversion
 			sessionMesg.SetAvgGrade(GetAvgGrade(workoutSamples));
 			sessionMesg.SetMaxPosGrade(GetMaxGrade(workoutSamples));
 			sessionMesg.SetMaxNegGrade(0.0f);
+
+			var totalElevation = workoutSamples.Summaries.FirstOrDefault(s => s.Slug == "elevation");
+			if (totalElevation?.Value > 0)
+			{
+				try
+				{
+					sessionMesg.SetTotalAscent((ushort)ConvertDistanceToMeters(totalElevation.Value.GetValueOrDefault(), totalElevation.Display_Unit));
+				} catch (Exception e)
+				{
+					_logger.Warning($"Failed to cast elevation of {totalElevation?.Value} to ushort after converting to meters. Skipping data point.", e);
+				}
+			}
 
 			if (sport == Sport.Rowing)
 			{
